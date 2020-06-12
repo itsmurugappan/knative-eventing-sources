@@ -29,6 +29,7 @@ var (
 	id            int
 )
 
+//S3Source houses all the state related to the event
 type S3Source struct {
 	buffer            string
 	sinkData          []string
@@ -42,6 +43,7 @@ type S3Source struct {
 	Connection ObjectStoreConfig
 }
 
+//SinkConfig houses the state of binding
 type SinkConfig struct {
 	URL           string `envconfig:"K_SINK"`
 	CEOverrides   string `envconfig:"K_CE_OVERRIDES"`
@@ -60,17 +62,19 @@ type ObjectStoreConfig struct {
 	ChunkSize string `envconfig:"DOWNLOAD_CHUNK_SIZE" default:"500000000"`
 }
 
+//S3SourceData specifies the shape of the data transmitted
 type S3SourceData struct {
 	Data string
 }
 
+//Result specifies type returned by S3Source
 type Result struct {
 	ErrorCount int
 	SentCount  int
 }
 
 func (source *S3Source) checkForOverrides() {
-	ceo := source.GetCEOverrides()
+	ceo := source.Sink.CEOverrides
 	if len(ceo) > 0 {
 		overrides := duckv1.CloudEventOverrides{}
 		err := json.Unmarshal([]byte(ceo), &overrides)
@@ -97,14 +101,7 @@ func getCloudEvents() cloudevents.Event {
 	return event
 }
 
-func (source *S3Source) SetOverrides(overrides duckv1.CloudEventOverrides) {
-	ceOverrides = &overrides
-}
-
-func (source *S3Source) GetCEOverrides() string {
-	return source.Sink.CEOverrides
-}
-
+//ConstructCloudEventsClient establishes HTTP client
 func (source *S3Source) ConstructCloudEventsClient() {
 	p, err := cloudevents.NewHTTP()
 	if err != nil {
@@ -119,6 +116,7 @@ func (source *S3Source) ConstructCloudEventsClient() {
 	source.cloudEventsClient = c
 }
 
+//SetCtx set the context for the data transfer
 func (source *S3Source) SetCtx() {
 	ctx := cloudevents.ContextWithTarget(context.Background(), source.Sink.URL)
 	interval, _ := time.ParseDuration(source.Sink.RetryInterval)
@@ -150,6 +148,7 @@ func (source *S3Source) createChunks() {
 	log.Printf("chunks to process: %d", chunks)
 }
 
+//GenerateEvents does the heavy lifting in the whole process
 func (source *S3Source) GenerateEvents() interface{} {
 	id = 0
 	source.checkForOverrides()
