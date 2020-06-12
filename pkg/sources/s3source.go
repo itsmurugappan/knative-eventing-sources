@@ -60,6 +60,10 @@ type ObjectStoreConfig struct {
 	ChunkSize string `envconfig:"DOWNLOAD_CHUNK_SIZE" default:"500000000"`
 }
 
+type S3SourceData struct {
+	Data string
+}
+
 type Result struct {
 	ErrorCount int
 	SentCount  int
@@ -208,7 +212,7 @@ func (source *S3Source) constructData(reader *bufio.Reader) {
 
 func (source *S3Source) pushToSink() {
 	event := getCloudEvents()
-	if err := event.SetData("text/json", strings.Join(source.sinkData, "")); err != nil {
+	if err := event.SetData("application/json", S3SourceData{strings.Join(source.sinkData, "")}); err != nil {
 		panic(err)
 	}
 	if res := source.cloudEventsClient.Send(source.ctx, event); !cloudevents.IsACK(res) {

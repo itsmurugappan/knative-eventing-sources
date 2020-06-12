@@ -167,7 +167,7 @@ func getEvent(data []string, id string) cloudevents.Event {
 	event.SetType("s3-flat-file-source")
 	event.SetSource("https://github.com/itsmurugappan/s3-flat-file-source")
 	event.SetID(id)
-	event.SetData("text/json", strings.Join(data, ""))
+	event.SetData("application/json", S3SourceData{strings.Join(data, "")})
 	return event
 }
 

@@ -1,7 +1,5 @@
 package sources
 
-import ()
-
 type EventSource interface {
 	SetCtx()
 	ConstructCloudEventsClient()

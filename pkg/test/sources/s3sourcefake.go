@@ -1,7 +1,5 @@
 package sources
 
-import ()
-
 type S3SourceFake struct {
 }
 
