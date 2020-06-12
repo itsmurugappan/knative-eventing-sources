@@ -52,6 +52,7 @@ type SinkConfig struct {
 	RetryInterval string `envconfig:"SINK_RETRY_INTERVAL" default:"1"`
 }
 
+//ObjectStoreConfig houses object store connection state
 type ObjectStoreConfig struct {
 	Bucket    string `envconfig:"S3_BUCKET"`
 	Key       string `envconfig:"S3_FILE_NAME"`

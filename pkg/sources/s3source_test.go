@@ -53,7 +53,7 @@ func TestS3EventSource(t *testing.T) {
 			"this is the sixth line", "\n",
 			"this is the seventh line", "\n",
 			"this is the eighth line", "\n",
-			"this is the nineth line", "\n",
+			"this is the ninth line", "\n",
 			"this is the tenth line", "\n",
 			"this is the eleventh line", "\n",
 		},
@@ -69,7 +69,7 @@ func TestS3EventSource(t *testing.T) {
 				"this is the sixth line", "\n",
 				"this is the seventh line", "\n",
 				"this is the eighth line", "\n",
-				"this is the nineth line", "\n",
+				"this is the ninth line", "\n",
 				"this is the tenth line", "\n",
 			}, "2"),
 			getEvent([]string{
