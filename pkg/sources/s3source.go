@@ -138,12 +138,13 @@ func (source *S3Source) createS3Session() {
 
 func (source *S3Source) createChunks() {
 	logger := logging.FromContext(source.ctx)
+	logger.Infof("getting head for bucket %s, file %s", source.Connection.Bucket, source.Connection.Key)
 	head, err := source.s3Client.HeadObject(&s3.HeadObjectInput{
 		Bucket: &source.Connection.Bucket,
 		Key:    &source.Connection.Key,
 	})
 	if err != nil {
-		logger.Error("err getting head of the object", err)
+		logger.Fatalf("err getting head of the object", err)
 	}
 	logger.Infof("object head:%v", head)
 	contentSize := *head.ContentLength
