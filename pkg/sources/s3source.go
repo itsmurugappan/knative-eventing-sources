@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 	"time"
 
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	logging "knative.dev/pkg/logging"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -80,7 +80,7 @@ func (source *S3Source) checkForOverrides() {
 		overrides := duckv1.CloudEventOverrides{}
 		err := json.Unmarshal([]byte(ceo), &overrides)
 		if err != nil {
-			log.Fatalf("[ERROR] Unparseable CloudEvents overrides %s: %v", ceo, err)
+			logging.FromContext(source.ctx).Fatalf("[ERROR] Unparseable CloudEvents overrides %s: %v", ceo, err)
 		}
 		ceOverrides = &overrides
 	}
@@ -106,12 +106,12 @@ func getCloudEvents() cloudevents.Event {
 func (source *S3Source) ConstructCloudEventsClient() {
 	p, err := cloudevents.NewHTTP()
 	if err != nil {
-		log.Fatalf("failed to create http protocol: %s", err.Error())
+		logging.FromContext(source.ctx).Fatalf("failed to create http protocol: %s", err.Error())
 	}
 
 	c, err := cloudevents.NewClient(p, cloudevents.WithUUIDs(), cloudevents.WithTimeNow())
 	if err != nil {
-		log.Fatalf("failed to create client: %s", err.Error())
+		logging.FromContext(source.ctx).Fatalf("failed to create client: %s", err.Error())
 	}
 
 	source.cloudEventsClient = c
@@ -137,20 +137,25 @@ func (source *S3Source) createS3Session() {
 }
 
 func (source *S3Source) createChunks() {
-	head, _ := source.s3Client.HeadObject(&s3.HeadObjectInput{
+	logger := logging.FromContext(source.ctx)
+	head, err := source.s3Client.HeadObject(&s3.HeadObjectInput{
 		Bucket: &source.Connection.Bucket,
 		Key:    &source.Connection.Key,
 	})
-
+	if err != nil {
+		logger.Error("err getting head of the object", err)
+	}
+	logger.Infof("object head:%v", head)
 	contentSize := *head.ContentLength
 	chunkSize, _ = strconv.Atoi(source.Connection.ChunkSize)
 	sinkDumpCount, _ = strconv.Atoi(source.Sink.DumpCount)
 	chunks = contentSize/int64(chunkSize) + 1
-	log.Printf("chunks to process: %d", chunks)
+	logging.FromContext(source.ctx).Infof("chunks to process: %d", chunks)
 }
 
 //GenerateEvents does the heavy lifting in the whole process
 func (source *S3Source) GenerateEvents() interface{} {
+	logger := logging.FromContext(source.ctx)
 	id = 0
 	source.checkForOverrides()
 	source.createS3Session()
@@ -159,7 +164,7 @@ func (source *S3Source) GenerateEvents() interface{} {
 	startByte, endByte := int64(0), int64(chunkSize)
 
 	for i := int64(0); i < chunks; i++ {
-		log.Printf("Processing chunk %d, starting byte %d, ending byte %d ", i, startByte, endByte)
+		logger.Infof("Processing chunk %d, starting byte %d, ending byte %d ", i, startByte, endByte)
 		results, err := source.s3Client.GetObject(&s3.GetObjectInput{
 			Bucket: &source.Connection.Bucket,
 			Key:    &source.Connection.Key,
@@ -167,7 +172,7 @@ func (source *S3Source) GenerateEvents() interface{} {
 		})
 		if err != nil {
 			source.processErrs = source.processErrs + 1
-			log.Printf("Error Getting Object from S3 : %s", err.Error())
+			logger.Infof("Error Getting Object from S3 : %s", err.Error())
 			break
 		}
 
@@ -194,7 +199,7 @@ func (source *S3Source) constructData(reader *bufio.Reader) {
 				break
 			} else {
 				source.processErrs = source.processErrs + 1
-				log.Printf("failed to read data: %s", err.Error())
+				logging.FromContext(source.ctx).Infof("failed to read data: %s", err.Error())
 			}
 		}
 		if source.buffer != "" {
@@ -217,7 +222,7 @@ func (source *S3Source) pushToSink() {
 	}
 	if res := source.cloudEventsClient.Send(source.ctx, event); !cloudevents.IsACK(res) {
 		source.processErrs = source.processErrs + 1
-		log.Printf("failed to send cloudevent: %v", res)
+		logging.FromContext(source.ctx).Infof("failed to send cloudevent: %v", res)
 		return
 	}
 	//reset
